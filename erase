@@ -1,0 +1,2 @@
+#!/bin/bash
+JLinkExe -device nRF52 -speed 4000 -if SWD

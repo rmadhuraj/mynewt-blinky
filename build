@@ -1,0 +1,39 @@
+#!/bin/bash
+#if [ $# -ne "1" ]; then
+if [ $# == "0" ]; then
+	echo " ./build target "
+	echo " example "
+	echo " ./build twr_tag"
+	echo " ./build twr_node"
+	exit 1
+fi
+newt build $1
+newt create-image $1 2.0.0
+if [ $# == "2" ]; then
+    newt build $2
+    newt create-image $2 2.0.0
+fi
+if [ $# == "3" ]; then
+    newt build $2
+    newt create-image $2 2.0.0
+    newt build $3
+    newt create-image $3 2.0.0
+fi
+if [ $# == "4" ]; then
+    newt build $2
+    newt create-image $2 2.0.0
+    newt build $3
+    newt create-image $3 2.0.0
+    newt build $4
+    newt create-image $4 2.0.0
+fi
+if [ $# == "5" ]; then
+    newt build $2
+    newt create-image $2 2.0.0
+    newt build $3
+    newt create-image $3 2.0.0
+    newt build $4
+    newt create-image $4 2.0.0
+    newt build $5
+    newt create-image $5 2.0.0
+fi

@@ -1,0 +1,9 @@
+#!/bin/bash
+if [ $# -ne "1" ]; then
+	echo " ./load target "
+	echo " example "
+	echo " ./load twr_tag"
+	echo " ./load twr_node"
+	exit 1
+fi
+newt load $1 
