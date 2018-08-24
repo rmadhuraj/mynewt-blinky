@@ -1,0 +1,4 @@
+syscfg.vals:
+    SHELL_TASK: 1
+    SHELL_PROMPT_MODULE: 1
+    STATS_NAMES: 1
