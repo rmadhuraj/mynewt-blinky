@@ -1,0 +1,4 @@
+#!/bin/bash
+echo -e " \n\n ./build b && ./load b\n\n "
+./build $1 && ./load $1
+

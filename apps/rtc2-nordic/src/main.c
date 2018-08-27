@@ -50,7 +50,7 @@ timer_ev_cb(struct os_event *ev)
 {
     assert(ev != NULL);
     printf("rtc %lu cpu= %lu \n",time32_incr,os_cputime_ticks_to_usecs(os_cputime_get32())/1000000);
-
+    printf("   cpu ticks == %lu",os_cputime_get32());
 //    hal_gpio_toggle(g_led_pin);
 //    hal_gpio_toggle(g_led_pin1);
     os_callout_reset(&blinky_callout, OS_TICKS_PER_SEC);

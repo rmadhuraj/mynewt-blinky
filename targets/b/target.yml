@@ -1,0 +1,3 @@
+target.app: "apps/blinky-callout"
+target.bsp: "@apache-mynewt-core/hw/bsp/dwm1001-dev"
+target.build_profile: "debug"
