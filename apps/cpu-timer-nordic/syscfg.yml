@@ -1,0 +1,8 @@
+syscfg.vals:
+    # Route console to RTT
+    CONSOLE_UART: 1
+    CONSOLE_RTT: 0
+    # Enable DW1000
+    DW1000_DEVICE_0: 1
+    # OS_SYSVIEW: 1
+    OS_CPUTIME_FREQ: 16000000
