@@ -22,7 +22,6 @@
 #include <bsp/bsp.h>
 #include "os/os_dev.h"
 #include <mcu/cmsis_nvic.h>
-//#include <mcu/stm32_hal.h>
 #include <flash_map/flash_map.h>
 #include <stm32f429xx.h>
 #include <stm32f4xx_hal_gpio_ex.h>
@@ -46,39 +45,16 @@
 #include "dw1000/dw1000_dev.h"
 #include "dw1000/dw1000_hal.h"
 #endif
+#if MYNEWT_VAL(ETH_0)
+#include "stm32_eth/stm32_eth.h"
+#include "stm32_eth/stm32_eth_cfg.h"
+#endif
 
 #if MYNEWT_VAL(UART_0)
 static struct uart_dev hal_uart0;
 
-/* UART connected to st-link */
-/*
-static const struct stm32_uart_cfg uart_cfg[UART_CNT] = {
-    [0] = {
-        .suc_uart = USART1,
-        .suc_rcc_reg = &RCC->APB2ENR,
-        .suc_rcc_dev = RCC_APB2ENR_USART1EN,
-        .suc_pin_tx = MCU_GPIO_PORTA(9),
-        .suc_pin_rx = MCU_GPIO_PORTA(10),
-        .suc_pin_rts = -1,
-        .suc_pin_cts = -1,
-        .suc_pin_af = GPIO_AF7_USART1,
-        .suc_irqn = USART1_IRQn
-    }
-};
-
-
-
- */
-struct stm32_hal_spi_cfg {
-    int ss_pin;                     /* for slave mode */
-    int sck_pin;
-    int miso_pin;
-    int mosi_pin;
-    int irq_prio;
-};
-
-
-static const struct stm32_uart_cfg uart_cfg[UART_CNT] = {
+/* UART connected to J8 */
+static const struct stm32_uart_cfg os_bsp_uart_cfg[UART_CNT] = {
     [0] = {
         .suc_uart = USART3,
         .suc_rcc_reg = &RCC->APB1ENR,
@@ -93,8 +69,16 @@ static const struct stm32_uart_cfg uart_cfg[UART_CNT] = {
 };
 #endif
 
+struct stm32_hal_spi_cfg {
+    int ss_pin;                     /* for slave mode */
+    int sck_pin;
+    int miso_pin;
+    int mosi_pin;
+    int irq_prio;
+};
+
 #if MYNEWT_VAL(SPI_0_MASTER)
-struct stm32_hal_spi_cfg spi0_cfg = {
+struct stm32_hal_spi_cfg os_bsp_spi0m_cfg = {
     .ss_pin   = MCU_GPIO_PORTD(14),
     .sck_pin  = MCU_GPIO_PORTA(5),
     .miso_pin = MCU_GPIO_PORTA(6),
@@ -103,6 +87,41 @@ struct stm32_hal_spi_cfg spi0_cfg = {
 };
 #endif
 
+#if MYNEWT_VAL(ETH_0)
+static const struct stm32_eth_cfg eth_cfg = {
+    /*
+     * PORTA
+     *   PA1  - ETH_RMII_REF_CLK
+     *   PA2  - ETH_RMII_MDIO
+     *   PE15 - ETH_RMII_MDINT  (GPIO irq?)
+     *   PA7  - ETH_RMII_CRS_DV
+     */
+    .sec_port_mask[0] = (1 << 1) | (1 << 2) | (1 << 7),
+
+    /*
+     * PORTC
+     *   PC1 - ETH_RMII_MDC
+     *   PC4 - ETH_RMII_RXD0
+     *   PC5 - ETH_RMII_RXD1
+     */
+    .sec_port_mask[2] = (1 << 1) | (1 << 4) | (1 << 5),
+
+    /*
+     * PORTG
+     *   PG11 - ETH_RMII_TXEN
+     *   PG13 - ETH_RMII_TXD0
+     */
+    .sec_port_mask[6] = (1 << 11) | (1 << 13) ,
+    /*
+     *  PORT B
+     *   PB13 - ETH_RMII_TXD1
+     */
+    .sec_port_mask[1] = (1 << 13),
+    .sec_phy_type = LAN_8742_RMII,
+    //.sec_phy_irq = MCU_GPIO_PORTE(15)
+    .sec_phy_irq = -1
+};
+#endif
 
 
 static const struct hal_bsp_mem_dump dump_cfg[] = {
@@ -148,18 +167,14 @@ static const struct dw1000_dev_cfg dw1000_0_cfg = {
 #endif
 
 
+void SystemClock_Config(void);
+void SystemClockHSI_Config(void);
 void
 hal_bsp_init(void)
 {
     int rc;
 
     (void)rc;
-
-#if MYNEWT_VAL(UART_0)
-    rc = os_dev_create((struct os_dev *) &hal_uart0, "uart0",
-      OS_DEV_INIT_PRIMARY, 0, uart_hal_init, (void *)&uart_cfg[0]);
-    assert(rc == 0);
-#endif
 
 #if MYNEWT_VAL(TIMER_0)
     hal_timer_init(0, TIM9);
@@ -179,8 +194,12 @@ hal_bsp_init(void)
 #endif
 
 #if MYNEWT_VAL(SPI_0_MASTER)
-    rc = hal_spi_init(0, &spi0_cfg, HAL_SPI_TYPE_MASTER);
+    rc = hal_spi_init(0, &os_bsp_spi0m_cfg, HAL_SPI_TYPE_MASTER);
     assert(rc == 0);
+/*
+    rc = os_mutex_init(&g_spi0_mutex);
+    assert(rc == 0);
+    */
 #endif
 
 #if MYNEWT_VAL(DW1000_DEVICE_0)
@@ -188,6 +207,16 @@ hal_bsp_init(void)
     rc = os_dev_create((struct os_dev *) dw1000_0, "dw1000_0",
             OS_DEV_INIT_PRIMARY, 0, dw1000_dev_init, (void *)&dw1000_0_cfg);
     assert(rc == 0);
+#endif
+
+#if MYNEWT_VAL(UART_0)
+    rc = os_dev_create((struct os_dev *) &hal_uart0, "uart0",
+      OS_DEV_INIT_PRIMARY, 0, uart_hal_init, (void *)&os_bsp_uart_cfg[0]);
+    assert(rc == 0);
+#endif
+
+#if MYNEWT_VAL(ETH_0)
+    stm32_eth_init(&eth_cfg);
 #endif
 
 }

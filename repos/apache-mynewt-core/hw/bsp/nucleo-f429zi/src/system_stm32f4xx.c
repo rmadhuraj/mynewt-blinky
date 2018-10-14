@@ -72,7 +72,7 @@
 #endif /* HSE_VALUE */
 
 #if !defined  (HSI_VALUE)
-  #define HSI_VALUE    ((uint32_t)1 << 27) /*!< Value of the Internal oscillator in Hz*/
+  #define HSI_VALUE    ((uint32_t)16000000) /*!< Value of the Internal oscillator in Hz*/
 #endif /* HSI_VALUE */
 
 /**
@@ -130,7 +130,7 @@
   const uint8_t AHBPrescTable[16] = {0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3, 4, 6, 7, 8, 9};
   const uint8_t APBPrescTable[8] = {0U, 0U, 0U, 0U, 1U, 2U, 3U, 4U};
 void SystemClockHSI_Config(void);
-void SystemClock_Config(void);
+void SystemClockHSE_Config(void);
 /**
   * @}
   */
@@ -180,9 +180,14 @@ void SystemInit(void)
   /* Disable all interrupts */
   RCC->CIR = 0x00000000;
 
+#if 0
   /* Configure HSI as system clock */
   SystemClockHSI_Config();
-
+#else
+  /* Configure HSE as System Clock */
+  //SystemClockHSE_Config();
+#endif
+  SystemCoreClockUpdate();
   /* Relocate the vector table */
   NVIC_Relocate();
 }
@@ -312,8 +317,8 @@ void SystemClockHSI_Config(void)
     //HAL_RCC_MCOConfig(RCC_MCO1, RCC_MCO1SOURCE_HSI, RCC_MCODIV_1);
 }
 
-#if 0
-void SystemClock_Config(void)
+#if 1
+void SystemClockHSE_Config(void)
 {
   RCC_ClkInitTypeDef RCC_ClkInitStruct;
   RCC_OscInitTypeDef RCC_OscInitStruct;
@@ -344,7 +349,7 @@ void SystemClock_Config(void)
   }
 
   /* Activate the OverDrive to reach the 180 MHz Frequency */
-  #if 0
+  #if 1
   ret = HAL_PWREx_EnableOverDrive();
   if(ret != HAL_OK)
   {
@@ -363,7 +368,7 @@ void SystemClock_Config(void)
   {
     while(1) { ; }
   }
-  HAL_RCC_MCOConfig(RCC_MCO1, RCC_MCO1SOURCE_PLLCLK, RCC_MCODIV_1);
+  //HAL_RCC_MCOConfig(RCC_MCO1, RCC_MCO1SOURCE_PLLCLK, RCC_MCODIV_1);
 }
 #endif
 
