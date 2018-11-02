@@ -38,8 +38,8 @@ extern "C" {
 #include "nrf52_bitfields.h"
 //#include "cmsis_nvic.h"
 
-#define RTC_DEV             NRF_RTC2
-#define RTC_IRQ             RTC2_IRQn
+#define RTC_DEV             NRF_RTC2 //NRF_RTC0 // IN mynewt OS NRF_RTC1 is used for the OS_TIME
+#define RTC_IRQ             RTC2_IRQn //RTC0_IRQn
 #define RTC_MAX_VALUE       (0xffffff)
 #define RTC_TICKS_TO_WAIT   31U        /*Generate RTC interrupt for every 1ms, 1000 counts in 1sec */
 //#define RTC_TICKS_TO_WAIT   50U          /*Generate RTC interrupt for every 1.584786054ms , 631 in 1sec */

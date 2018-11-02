@@ -50,9 +50,9 @@ timer_ev_cb(struct os_event *ev)
 {
     assert(ev != NULL);
     printf("rtc %lu cpu= %lu \n",time32_incr,os_cputime_ticks_to_usecs(os_cputime_get32())/1000000);
-    printf("   cpu ticks == %lu",os_cputime_get32());
-//    hal_gpio_toggle(g_led_pin);
-//    hal_gpio_toggle(g_led_pin1);
+    printf("   cpu ticks == %lu \n",os_cputime_get32());
+    hal_gpio_toggle(g_led_pin);
+    hal_gpio_toggle(g_led_pin1);
     os_callout_reset(&blinky_callout, OS_TICKS_PER_SEC);
 }
 static void
@@ -93,10 +93,11 @@ main(int argc, char **argv)
     printf("OS_CPU_FREQUENCY == %d\n",MYNEWT_VAL(OS_CPUTIME_FREQ));
 
     g_led_pin = LED_BLINK_PIN;
-    g_led_pin1 = LED_1;
+    g_led_pin1 = LED_2;
 
     hal_gpio_init_out(g_led_pin, 1);
     hal_gpio_init_out(g_led_pin1, 1);
+    hal_gpio_toggle(g_led_pin);
     init_timer();
     while (1) {
         os_eventq_run(os_eventq_dflt_get());
@@ -104,4 +105,3 @@ main(int argc, char **argv)
     assert(0);
     return rc;
 }
-
