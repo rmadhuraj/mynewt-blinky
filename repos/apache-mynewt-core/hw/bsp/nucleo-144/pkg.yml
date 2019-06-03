@@ -19,7 +19,7 @@
 
 pkg.name: hw/bsp/nucleo-144
 pkg.type: bsp
-pkg.description: BSP definition for the Decawave TDOA anchor board.
+pkg.description: BSP definition for the nucleo-144 board.
 pkg.author: "Apache Mynewt <dev@mynewt.apache.org>"
 pkg.homepage: "http://mynewt.apache.org/"
 pkg.keywords:

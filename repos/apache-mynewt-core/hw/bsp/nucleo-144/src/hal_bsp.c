@@ -46,7 +46,7 @@
 #include "stm32_eth/stm32_eth_cfg.h"
 #endif
 
-const uint32_t stm32_flash_sectors[] = {
+const uint32_t stm32f4_flash_sectors[] = {
     /* Bank 1 */
     0x08000000,     /* 16kB */
     0x08004000,     /* 16kB */
@@ -76,21 +76,30 @@ const uint32_t stm32_flash_sectors[] = {
     0x08200000,     /* End of flash */
 };
 
-#define SZ (sizeof(stm32_flash_sectors) / sizeof(stm32_flash_sectors[0]))
-_Static_assert(MYNEWT_VAL(STM32_FLASH_NUM_AREAS) == SZ,
-        "STM32_FLASH_NUM_AREAS does not match flash sectors");
+#define NAREAS (sizeof(stm32f4_flash_sectors) / sizeof(stm32f4_flash_sectors[0]))
+
+extern const struct hal_flash_funcs stm32f4_flash_funcs;
+
+const struct hal_flash stm32f4_flash_dev = {
+    .hf_itf = &stm32f4_flash_funcs,
+    .hf_base_addr = 0x08000000,
+    .hf_size = 2048 * 1024,
+    .hf_sector_cnt = NAREAS - 1,
+    .hf_align = 1,
+    .hf_erased_val = 0xff,
+};
 
 #if MYNEWT_VAL(UART_0)
 static struct uart_dev hal_uart0;
 
-/* UART connected to J8 */
-static const struct stm32_uart_cfg os_bsp_uart_cfg[UART_CNT] = {
+/* UART connected to st-link */
+static const struct stm32_uart_cfg uart_cfg[UART_CNT] = {
     [0] = {
         .suc_uart = USART3,
         .suc_rcc_reg = &RCC->APB1ENR,
         .suc_rcc_dev = RCC_APB1ENR_USART3EN,
-        .suc_pin_tx = MCU_GPIO_PORTB(10),
-        .suc_pin_rx = MCU_GPIO_PORTB(11),
+        .suc_pin_tx = MCU_GPIO_PORTD(8),
+        .suc_pin_rx = MCU_GPIO_PORTD(9),
         .suc_pin_rts = -1,
         .suc_pin_cts = -1,
         .suc_pin_af = GPIO_AF7_USART3,
@@ -115,7 +124,6 @@ struct stm32_hal_spi_cfg os_bsp_spi0m_cfg = {
     .mosi_pin = MCU_GPIO_PORTB(5),
     .irq_prio = 2,
 };
-struct os_sem g_spi0_sem;
 #endif
 
 #if MYNEWT_VAL(ETH_0)
@@ -166,7 +174,6 @@ static const struct hal_bsp_mem_dump dump_cfg[] = {
     }
 };
 
-extern const struct hal_flash stm32_flash_dev;
 const struct hal_flash *
 hal_bsp_flash_dev(uint8_t id)
 {
@@ -176,7 +183,7 @@ hal_bsp_flash_dev(uint8_t id)
     if (id != 0) {
         return NULL;
     }
-    return &stm32_flash_dev;
+    return &stm32f4_flash_dev;
 }
 
 const struct hal_bsp_mem_dump *
@@ -192,6 +199,12 @@ hal_bsp_init(void)
     int rc;
 
     (void)rc;
+
+#if MYNEWT_VAL(UART_0)
+    rc = os_dev_create((struct os_dev *) &hal_uart0, "uart0",
+      OS_DEV_INIT_PRIMARY, 0, uart_hal_init, (void *)&uart_cfg[0]);
+    assert(rc == 0);
+#endif
 
 #if MYNEWT_VAL(TIMER_0)
     hal_timer_init(0, TIM9);
@@ -212,14 +225,6 @@ hal_bsp_init(void)
 
 #if MYNEWT_VAL(SPI_0_MASTER)
     rc = hal_spi_init(0, (void *)&os_bsp_spi0m_cfg, HAL_SPI_TYPE_MASTER);
-    assert(rc == 0);
-    rc = os_sem_init(&g_spi0_sem, 0x1);
-    assert(rc == 0);
-#endif
-
-#if MYNEWT_VAL(UART_0)
-    rc = os_dev_create((struct os_dev *) &hal_uart0, "uart0",
-      OS_DEV_INIT_PRIMARY, 0, uart_hal_init, (void *)&os_bsp_uart_cfg[0]);
     assert(rc == 0);
 #endif
 
