@@ -6,7 +6,7 @@
 # to you under the Apache License, Version 2.0 (the
 # "License"); you may not use this file except in compliance
 # with the License.  You may obtain a copy of the License at
-# 
+#
 #  http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing,
@@ -17,22 +17,26 @@
 # under the License.
 #
 
-pkg.name: apps/cpu-timer-nordic
-pkg.type: app
-pkg.description: Basic example application which blinks an LED.
+pkg.name: hw/bsp/nucleo-144
+pkg.type: bsp
+pkg.description: BSP definition for the Decawave TDOA anchor board.
 pkg.author: "Apache Mynewt <dev@mynewt.apache.org>"
 pkg.homepage: "http://mynewt.apache.org/"
+pkg.keywords:
+    - stm32
+    - stm32f429
+
+pkg.cflags: -DSTM32F429xx -mfloat-abi=hard -mfpu=fpv4-sp-d16
+
+pkg.cflags.HARDFLOAT:
+    - -mfloat-abi=hard -mfpu=fpv4-sp-d16
 
 pkg.deps:
-    - "@apache-mynewt-core/kernel/os"
-    - "@apache-mynewt-core/hw/hal"
-    - "@apache-mynewt-core/sys/console/full"
-    - "@apache-mynewt-core/hw/hal"
-    - "@apache-mynewt-core/hw/mcu/nordic/nrf52xxx"
+    - "@apache-mynewt-core/hw/mcu/stm/stm32f4xx"
     - "@apache-mynewt-core/libc/baselibc"
+    - "@apache-mynewt-core/kernel/os"
 
-pkg.cflags:
-    - "-std=gnu99"
-    - "-fms-extensions"
-
-    
+pkg.deps.UART_0:
+    - "@apache-mynewt-core/hw/drivers/uart/uart_hal"
+pkg.deps.ETH_0:
+    - "@apache-mynewt-core/hw/drivers/lwip/stm32_eth"
