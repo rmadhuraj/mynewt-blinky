@@ -25,7 +25,7 @@ pkg.homepage: "http://mynewt.apache.org/"
 pkg.keywords:
     - stm32
     - stm32f429
-
+    - nucleo-144
 pkg.cflags: -DSTM32F429xx -mfloat-abi=hard -mfpu=fpv4-sp-d16
 
 pkg.cflags.HARDFLOAT:
