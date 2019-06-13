@@ -30,7 +30,6 @@
 #include <mcu/mcu_sim.h>
 #endif
 
-/* The spi txrx callback */
 struct sblinky_spi_cb_arg
 {
     int transfers;
@@ -39,6 +38,7 @@ struct sblinky_spi_cb_arg
 };
 struct sblinky_spi_cb_arg spi_cb_obj;
 void *spi_cb_arg;
+int g_rx_len ;
 
 /* Task 1 */
 #define TASK1_PRIO (1)
@@ -50,8 +50,6 @@ struct os_sem g_test_sem;
 
 /* For LED toggling */
 int g_led_pin;
-
-#define SPI_BAUDRATE 500
 
 #if MYNEWT_VAL(SPI_0_MASTER) || MYNEWT_VAL(SPI_1_MASTER) || MYNEWT_VAL(SPI_2_MASTER)
 #define SPI_MASTER 1
@@ -67,23 +65,31 @@ int g_led_pin;
 #define SPI_S_NUM  (MYNEWT_VAL(SPITEST_S_NUM))
 #endif
 
+#if !defined(SPI_MASTER) && !defined(SPI_SLAVE)
+#error "Select the Device as SPI_MASTER or SPI_SLAVE, check app/syscfg.yml"
+#endif
 #if defined(SPI_MASTER) && defined(SPI_SLAVE)
 #if SPI_M_NUM == SPI_S_NUM
 #error "SPI_M_NUM and SPI_S_NUM cannot be the same."
 #endif
 #endif
 
+static void sblinky_spi_cfg(int spi_num, hal_spi_txrx_cb txrx_cb, void *arg)
+{
+    struct hal_spi_settings my_spi;
+    my_spi.data_order = HAL_SPI_MSB_FIRST;
+    my_spi.data_mode = HAL_SPI_MODE0;
+    my_spi.baudrate = MYNEWT_VAL(SPI_BAUDRATE);
+    my_spi.word_size = HAL_SPI_WORD_SIZE_8BIT;
+    assert(hal_spi_config(spi_num, &my_spi) == 0);
+    assert(hal_spi_set_txrx_cb(spi_num, txrx_cb, arg) == 0);
+}
+
 #ifdef SPI_MASTER
 uint8_t g_spi_tx_buf[32];
-uint8_t g_spi_last_tx_buf[32];
 uint8_t g_spi_rx_buf[32];
-uint32_t g_spi_xfr_num;
-uint8_t g_spi_null_rx;
-uint8_t g_last_tx_len;
 
-static
-
-void
+static void
 sblinky_spi_irqm_handler(void *arg, int len)
 {
     struct sblinky_spi_cb_arg *cb;
@@ -97,80 +103,39 @@ sblinky_spi_irqm_handler(void *arg, int len)
     os_sem_release(&g_test_sem);
 }
 
-void
-sblinky_spim_cfg(int spi_num)
-{
-    struct hal_spi_settings my_spi;
-
-    my_spi.data_order = HAL_SPI_MSB_FIRST;
-    my_spi.data_mode = HAL_SPI_MODE0;
-    my_spi.baudrate = SPI_BAUDRATE;
-    my_spi.word_size = HAL_SPI_WORD_SIZE_8BIT;
-    assert(hal_spi_config(spi_num, &my_spi) == 0);
-}
 #endif
 
 #ifdef SPI_SLAVE
 uint8_t g_spi_tx_buf[32];
 uint8_t g_spi_rx_buf[32];
-uint32_t g_spi_xfr_num;
 
 void
 sblinky_spi_irqs_handler(void *arg, int len)
 {
     assert(arg == spi_cb_arg);
-    int i ;
-    for (i = 0; i < len; i++) 
-        console_printf("%2x ", g_spi_rx_buf[i]);
-    console_printf("\n");
+    g_rx_len = len;
     /* Post semaphore to task waiting for SPI slave */
     os_sem_release(&g_test_sem);
 }
 
-void
-sblinky_spis_cfg(int spi_num)
-{
-    struct hal_spi_settings my_spi;
-
-    my_spi.data_order = HAL_SPI_MSB_FIRST;
-    my_spi.data_mode = HAL_SPI_MODE0;
-    my_spi.baudrate =  SPI_BAUDRATE;
-    my_spi.word_size = HAL_SPI_WORD_SIZE_8BIT;
-    assert(hal_spi_config(spi_num, &my_spi) == 0);
-    hal_spi_set_txrx_cb(spi_num, sblinky_spi_irqs_handler, spi_cb_arg);
-}
 #endif
 
 #ifdef SPI_MASTER
 void
 spim_task_handler(void *arg)
 {
-    int i;
+    int i =0, j=0;
     int rc;
 
     /* Set the led pin */
     g_led_pin = LED_BLINK_PIN;
     hal_gpio_init_out(g_led_pin, 1);
-
     /* Use SS pin for testing */
     hal_gpio_init_out(SPI_SS_PIN, 1);
-    sblinky_spim_cfg(SPI_M_NUM);
-    hal_spi_set_txrx_cb(SPI_M_NUM, NULL, NULL);
-
-    /*
-     * Send some bytes in a non-blocking manner to SPI using tx val. The
-     * slave should send back 0x77.
-     */
-    g_spi_tx_buf[0] = 0xde;
-    g_spi_tx_buf[1] = 0xad;
-    g_spi_tx_buf[2] = 0xbe;
-    g_spi_tx_buf[3] = 0xef;
-    g_spi_tx_buf[4] = 0xaa;
-
-    /* Set up the callback to use when non-blocking API used */
+    memset(g_spi_tx_buf, 0, 32);
     spi_cb_arg = &spi_cb_obj;
-    spi_cb_obj.txlen = 5;
-    hal_spi_set_txrx_cb(SPI_M_NUM, sblinky_spi_irqm_handler, spi_cb_arg);
+    spi_cb_obj.txlen = 32;
+    sblinky_spi_cfg(SPI_M_NUM, sblinky_spi_irqm_handler, spi_cb_arg);
     hal_spi_enable(SPI_M_NUM);
 
     while (1) {
@@ -179,81 +144,66 @@ spim_task_handler(void *arg)
 
         /* Toggle the LED */
         hal_gpio_toggle(g_led_pin);
-    
-        /* Get random length to send */
 
-            /* Send non-blocking */
-            assert(hal_gpio_read(SPI_SS_PIN) == 1);
+        assert(hal_gpio_read(SPI_SS_PIN) == 1);
             hal_gpio_write(SPI_SS_PIN, 0);
 
-            g_spi_null_rx = 0;
-            rc = hal_spi_txrx_noblock(SPI_M_NUM, g_spi_tx_buf, g_spi_rx_buf,
-                                      spi_cb_obj.txlen);
-            assert(!rc);
-            //os_sem_pend(&g_test_sem, OS_TIMEOUT_NEVER);
-            console_printf("a transmitted: ");
-            for (i = 0; i < spi_cb_obj.txlen; i++) {
-                console_printf("%2x ", g_spi_tx_buf[i]);
-            }
-            console_printf("\n");
-            console_printf("received: ");
-            for (i = 0; i < spi_cb_obj.txlen; i++) {
-                console_printf("%2x ", g_spi_rx_buf[i]);
-            }
-            console_printf("\n");
+        /* Send non-blocking */
+        rc = hal_spi_txrx_noblock(SPI_M_NUM, g_spi_tx_buf, g_spi_rx_buf,
+                spi_cb_obj.txlen);
+        assert(!rc);
+        os_sem_pend(&g_test_sem, OS_TIMEOUT_NEVER);
+        console_printf("transmitted: ");
+        for (i = 0; i < spi_cb_obj.txlen; i++) {
+            console_printf("%2x ", g_spi_tx_buf[i]);
+        }
+        console_printf("\n");
+        console_printf("received   : ");
+        for (i = 0; i < spi_cb_obj.txlen; i++) {
+            console_printf("%2x ", g_spi_rx_buf[i]);
+        }
+        console_printf("\n");
+        /* Get random length to send */
+        spi_cb_obj.txlen = (rand() & 0x1F) + 1;
+        console_printf("ranlen= %d \r\n",spi_cb_obj.txlen);
+        memset(g_spi_tx_buf, ++j, spi_cb_obj.txlen);
     }
 }
 #endif
 
 #ifdef SPI_SLAVE
-int prev_len;
-uint8_t prev_buf[32];
-
 void
 spis_task_handler(void *arg)
 {
-    int rc;
+    int rc,i;
 
-    /* Set the led pin for the E407 devboard */
     g_led_pin = LED_BLINK_PIN;
     hal_gpio_init_out(g_led_pin, 1);
 
     spi_cb_arg = &spi_cb_obj;
-    sblinky_spis_cfg(SPI_S_NUM);
+    sblinky_spi_cfg(SPI_S_NUM, sblinky_spi_irqs_handler, spi_cb_arg);
     hal_spi_enable(SPI_S_NUM);
 
     /* Make the default character 0x77 */
     hal_spi_slave_set_def_tx_val(SPI_S_NUM, 0x77);
 
-    /*
-     * Fill buffer with 0x77 for first transfer. This should be a 0xdeadbeef
-     * transfer from master to start things off
-     */
+    /*  Fill buffer with 0x77 for first transfer. */
     memset(g_spi_tx_buf, 0x77, 32);
+    spi_cb_obj.txlen = 32;
     rc = hal_spi_txrx_noblock(SPI_S_NUM, g_spi_tx_buf, g_spi_rx_buf, 32);
 
     while (1) {
         /* Wait for semaphore from ISR */
         os_sem_pend(&g_test_sem, OS_TIMEOUT_NEVER);
-
-        if (g_spi_xfr_num == 0) {
-            /* Since we dont know what master will send, we fill 0x88 */
-            memset(g_spi_tx_buf, 0x88, 32);
-            g_spi_xfr_num = 1;
-            rc = hal_spi_txrx_noblock(SPI_S_NUM, g_spi_tx_buf, g_spi_rx_buf,
-                                      5);
-            assert(rc == 0);
-        } else {
-            /* transmit back what we just received */
-            memcpy(prev_buf, g_spi_tx_buf, 32);
-            memset(g_spi_tx_buf, 0xaa, 32);
-            //memcpy(g_spi_tx_buf, g_spi_rx_buf, spi_cb_obj.txlen);
-            rc = hal_spi_txrx_noblock(SPI_S_NUM, g_spi_tx_buf, g_spi_rx_buf,
-                                      5);
-            assert(rc == 0);
-        g_spi_xfr_num = 0;
-        }
-
+        spi_cb_obj.txlen = spi_cb_obj.txlen ? spi_cb_obj.txlen:32;
+        memcpy(g_spi_tx_buf, g_spi_rx_buf, spi_cb_obj.txlen);
+        rc = hal_spi_txrx_noblock(SPI_S_NUM, g_spi_tx_buf, g_spi_rx_buf,
+                spi_cb_obj.txlen);
+        assert(rc == 0);
+        console_printf("Data rcvd %2d: ",g_rx_len);
+        for (i = 0; i < g_rx_len; i++)
+            console_printf("%2x ", g_spi_rx_buf[i]);
+        console_printf("\n");
         /* Toggle the LED */
         hal_gpio_toggle(g_led_pin);
     }
@@ -324,4 +274,3 @@ main(int argc, char **argv)
 
     return rc;
 }
-

@@ -16,39 +16,11 @@
 # under the License.
 #
 
-# Package: apps/spitest
-
+# Package: apps/gpio-irq
 syscfg.defs:
-    SPITEST_SS_PIN:
-        description: 'SPI slave select pin number'
-        value: 3
-
-    SPITEST_M_NUM:
-        description: 'SPI peripheral number to use for master'
+    INT_SOURCE:
+        description: '1 will act as Interrupt Generator, 0 Will receive Interrupt'
         value: 1
-
-    SPITEST_S_NUM:
-        description: 'SPI peripheral number to use for slave'
-        value: 1
-    SPI_BAUDRATE:
-        description: 'BAUDRATE 8000kHz'
-        value: 8000
-
 syscfg.vals:
-    SHELL_TASK: 1
-    UART_0: 1
-    # Must enable either of SLAVE or MASTER
-    SPI_1_MASTER: 0
-    SPI_1_SLAVE: 0
-
-    SPI_1_MASTER_PIN_SCK: 4
-    SPI_1_MASTER_PIN_MOSI: 6
-    SPI_1_MASTER_PIN_MISO: 7
-    SPI_1_SLAVE_PIN_SCK: 4
-    SPI_1_SLAVE_PIN_MOSI: 6
-    SPI_1_SLAVE_PIN_MISO: 7
-    SPI_1_SLAVE_PIN_SS: 3
-    CONSOLE_RTT: 0
+    # Route console to RTT
     CONSOLE_UART: 1
-    # Default task settings
-    OS_MAIN_STACK_SIZE: 512
